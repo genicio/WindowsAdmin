@@ -1,0 +1,45 @@
+[string[]]$global:SERVICES=@()
+
+
+Function getServices(){
+    #$global:SERVICES=(Get-WmiObject Win32_Service | Where-Object { $_.PathName -like "*Microstrategy*" -and $_.State -eq "Running" } |Select Name, DisplayName |Sort DisplayName -Desc).Name
+    $global:SERVICES=("MHealthAgent","MicroStrategy Intelligence Server","MAPing")
+}
+
+Function shutdownServer(){
+    Write-Host "Desliga o servidor"
+    Stop-Computer -ComputerName "localhost" -Force
+    
+}
+
+Function checkServicesState(){
+    getServices
+    [bool]$stop=$false
+    Foreach ($SERVICE in $SERVICES) {
+        If ( ((Get-Service -Name $SERVICE).Status) -eq "Running"){
+            $stop=$true
+        }
+    }
+    If ($stop){
+        stopServices
+    } Else {
+        Write-Host "Todos os servidores parados."
+        shutdownServer
+    }
+}
+
+Function stopServices(){
+    getServices
+    Foreach ($SERVICE in $SERVICES) {
+        While ( ((Get-Service -Name $SERVICE).Status) -eq "Running"){
+            Write-Host "Parando o serviço: "$SERVICE
+            Stop-Service -Name "$SERVICE" -Force
+            Start-Sleep -s 5
+        }
+    }
+
+    checkServicesState
+
+}
+
+checkServicesState
